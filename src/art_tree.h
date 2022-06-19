@@ -44,10 +44,15 @@ public:
         return true;
     }
 
-    bool checkPrefix(N* n, const Key& k, uint16_t& level, uint8_t& no_match_key) const {
+    bool checkPrefix(N* n, const Key& k, uint16_t& level,
+                     uint8_t& no_match_key, uint8_t *remain, uint8_t& remain_len) const {
         for (int i = 0; i < n->getPrefixLen(); i++) {
             if (k[level] != n->getPrefix()[i]) {
                 no_match_key = n->getPrefix()[i];
+                if (i + 1 < n->getPrefixLen()) {
+                    memcpy(remain, &n->getPrefix()[i + 1], n->getPrefixLen() - i - 1);
+                    remain_len = n->getPrefixLen() - i - 1;
+                }
                 return false;
             }
             level++;
@@ -55,19 +60,19 @@ public:
         return true;
     }
 
-    N* GenNewNode(const Key& key, uint16_t &level, TID tid) {
+    N* GenNewNode(const Key& key, uint16_t level, TID tid) {
         N *n;
-        if (level == key.getKeyLen() - 1) {
-            return (N*)tid;
+        uint8_t p_len;
+
+        if (level < key.getKeyLen()) {
+            n = new N4();
+            p_len = min(MAX_PREFIX_LEN, key.getKeyLen() - level - 1);
+            n->setPrefix((uint8_t *)&key[level], p_len);
+            level += p_len;
+
+            N::setChild(n, key[level], GenNewNode(key, level + 1, tid));
         } else {
-            uint16_t p_len;
-            if (level < key.getKeyLen()) {
-                n = new N4();
-                p_len = min(MAX_PREFIX_LEN, key.getKeyLen() - level - 1);
-                level += p_len;
-                n->setPrefix((uint8_t*)&key, p_len);
-                N::setChild(n, key[level], GenNewNode(key, level, tid));
-            }
+            return (N*)N::convertToLeaf(tid);
         }
         return n;
     }
@@ -77,6 +82,7 @@ public:
     void insert(const Key& key, TID tid);
 };
 
+extern template class ART<32>;
 extern template class ART<64>;
 extern template class ART<128>;
 extern template class ART<256>;

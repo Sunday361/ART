@@ -20,6 +20,9 @@
  * 1.2 数据库面临的问题
  * 1.3 内存数据库的主要开销
  *
+ * %%% 还需要考虑一下 数据的存储格式， 大小端还有 ieee 754
+ * 其他诸多数据格式
+ *
  * 2.1 ART
  * 2.2 ART Sync
  * 2.3 Optimistic Coupling
@@ -142,51 +145,65 @@ void ART<KeyLen>::insert(const Key &key, TID tid) {
     }
     bool needRestart = false;
 
-    N* cur;
+    N* cur = nullptr;
     N* next = root_;
-    N* parent = nullptr;
-    uint8_t pk, k = 0, no_match_key;
+    N* parent;
+    uint8_t pk, k = 0;
     uint16_t level = 0;
     uint64_t v, pv;
+    uint8_t remainPrefix[MAX_PREFIX_LEN];
+    uint8_t no_match_key, remain_prefix_len;
 
-    while (true) {
+    while (level < key.getKeyLen()) {
         parent = cur;
         pk = k;
+        pv = v;
         cur = next;
         READ_LOCK(cur, v, needRestart)
 
         uint16_t nextLevel = level;
-        if (!checkPrefix(cur, key, nextLevel, no_match_key)) { /* No Match */
+        if (!checkPrefix(cur, key, nextLevel, no_match_key, remainPrefix, remain_prefix_len)) { /* No Match */
             COUPLING_LOCK(cur, parent, pv, v, needRestart)
             N* newNode = new N4();
-            N* nextNode = GenNewNode(key, nextLevel, tid);
-            cur->setPrefixLen(nextLevel - level);
+            N* nextNode = GenNewNode(key, nextLevel + 1, tid);
+
+            cur->setPrefix(remainPrefix, remain_prefix_len);
             newNode->setPrefix(cur->getPrefix(), nextLevel - level);
+
             N::setChild(newNode, no_match_key, cur);
             N::setChild(newNode, key[nextLevel], nextNode);
+            N::changeChild(parent, pk, newNode);
 
-            N::setChild(parent, pk, newNode);
             WRITE_UNLOCK(cur)
             WRITE_UNLOCK(parent)
             return ;
         }
-        if (!N::getChild(cur, key[nextLevel + 1])) { /* Specific Slot is NULL */
+        k = key[nextLevel];
+        if (!N::getChild(cur, k)) { /* Specific Slot is NULL */
             if (cur->isFull()) {
                 COUPLING_LOCK(cur, parent, pv, v, needRestart)
-                N::insertAndGrow(cur, parent, pk, k, GenNewNode(key, nextLevel, tid));
+                N::insertAndGrow(cur, parent, pk, k, GenNewNode(key, nextLevel + 1, tid));
                 WRITE_UNLOCK(cur)
                 WRITE_UNLOCK(parent)
             } else {
                 UPGRADE_LOCK(cur, v, needRestart)
-                N::setChild(cur,key[nextLevel + 1], GenNewNode(key, nextLevel, tid));
+                N::setChild(cur, k, GenNewNode(key, nextLevel + 1, tid));
                 WRITE_UNLOCK(cur)
             }
             return;
+        } else {
+            next = N::getChild(cur, k);
+
+            if (N::isLeaf(next)) { /* The Same Key is thought as Update */
+                N::changeChild(cur, k, (N*)N::convertToLeaf(tid));
+                return;
+            }
         }
         level = nextLevel + 1;
     }
 }
 
+template class ART<32>;
 template class ART<64>;
 template class ART<128>;
 template class ART<256>;

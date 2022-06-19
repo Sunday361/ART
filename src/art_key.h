@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include "common.h"
 
 using namespace std;
 
@@ -16,6 +17,10 @@ public:
 
     KEY(const KEY& key) {
         memcpy(keys_, key.keys_, KeyLen);
+    }
+
+    KEY() {
+        memset(keys_, 0, KeyLen);
     }
 
     bool operator==(const KEY &key) const {
@@ -39,10 +44,12 @@ public:
     }
 
     uint8_t& operator[](uint16_t i){
+        ASSERT(i >= 0 && i < KeyLen, "idx over range %d" << i);
         return keys_[i];
     }
 
     const uint8_t& operator[](uint16_t i) const {
+        ASSERT(i >= 0 && i < KeyLen, "idx over range %d" << i);
         return keys_[i];
     }
 

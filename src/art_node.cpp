@@ -12,7 +12,7 @@ void N::insertGrow(Small* cur, N* parent, uint8_t pk, uint8_t key, N* new_node) 
     cur->copyTo(new_cur);
 
     N::setChild(new_cur, key, new_node);
-    N::setChild(parent, pk, new_cur);
+    N::changeChild(parent, pk, new_cur);
 }
 
 void N::insertAndGrow(N* cur, N* parent, uint8_t pk, uint8_t key, N* new_node) {
@@ -33,7 +33,7 @@ void N::insertAndGrow(N* cur, N* parent, uint8_t pk, uint8_t key, N* new_node) {
             break;
         }
         case NT256:
-            assert(false);
+            __builtin_unreachable();
     }
 }
 
@@ -56,7 +56,7 @@ N* N::getChild(N* cur, const uint8_t k) {
             return n->getChild(k);
         }
     }
-    return nullptr;
+    __builtin_unreachable();
 }
 
 void N::setChild(N* cur, const uint8_t k, N *child) {
@@ -94,6 +94,28 @@ bool N::isFull() const {
             return count_ == 48;
         case NT256:
             return count_ == 256;
+    }
+    return false;
+}
+
+bool N::changeChild(N* cur, const uint8_t k, N *child) {
+    switch (cur->getType()) {
+        case NT4: {
+            auto n = static_cast<N4 *>(cur);
+            return n->changeChild(k, child);
+        }
+        case NT16: {
+            auto n = static_cast<N16 *>(cur);
+            return n->changeChild(k, child);
+        }
+        case NT48: {
+            auto n = static_cast<N48 *>(cur);
+            return n->changeChild(k, child);
+        }
+        case NT256: {
+            auto n = static_cast<N256 *>(cur);
+            return n->changeChild(k, child);
+        }
     }
     return false;
 }
