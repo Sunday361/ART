@@ -3,6 +3,7 @@
 
 #include "storage_defs.h"
 #include "storage/undo_record.h"
+#include "common/object_pool.h"
 
 namespace transaction {
     class TransactionManager;
