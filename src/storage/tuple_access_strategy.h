@@ -1,6 +1,9 @@
 #pragma once
 
-#include "data_table.h"
+#include <storage/block_layout.h>
+#include <storage/storage_utils.h>
+
+#include <common/common.h>
 
 namespace storage {
     class DataTable;
@@ -19,12 +22,12 @@ namespace storage {
             // return a pointer to the start of the column. (use as an array)
             byte *ColumnStart(const BlockLayout &layout, const col_id_t col_id) {
                 return StorageUtil::AlignedPtr(sizeof(uint64_t),  // always padded up to 8 bytes
-                                               varlen_contents_ + common::RawBitmap::SizeInBytes(layout.NumSlots()));
+                                               varlen_contents_ + RawBitmap::SizeInBytes(layout.NumSlots()));
             }
 
             // return The null-bitmap of this column
             RawConcurrentBitmap *NullBitmap() {
-                return reinterpret_cast<common::RawConcurrentBitmap *>(varlen_contents_);
+                return reinterpret_cast<RawConcurrentBitmap *>(varlen_contents_);
             }
 
             byte varlen_contents_[0];

@@ -3,6 +3,7 @@ file(GLOB TEST_SOURCES "${PROJECT_SOURCE_DIR}/test/*.cpp")
 add_custom_target(build-tests COMMAND ${CMAKE_CTEST_COMMAND} --show-only)
 add_custom_target(check-tests COMMAND ${CMAKE_CTEST_COMMAND} --verbose)
 
+set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
 ##########################################
 # "make XYZ_test"
 ##########################################
@@ -16,7 +17,9 @@ foreach (test_source ${TEST_SOURCES})
     add_dependencies(build-tests ${test_name})
     add_dependencies(check-tests ${test_name})
 
-    target_link_libraries(${test_name} art_shared gtest gmock_main)
+    include(xxhash)
+
+    target_link_libraries(${test_name} art_shared gtest gmock_main Xxhash)
 
     # Set test target properties and dependencies.
     set_target_properties(${test_name}

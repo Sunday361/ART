@@ -50,34 +50,34 @@ namespace Index {
         if (needRestart) goto restart;
 
 #define READ_LOCK(node, v, needRestart) \
-        v = (node)->readLockOrRestart(needRestart); \
+        v = (node)->ReadLockOrRestart(needRestart); \
         if (needRestart) goto restart;
 
 #define WRITE_LOCK(node, v, needRestart) \
-        v = (node)->readLockOrRestart(needRestart); \
+        v = (node)->WriteLockOrRestart(needRestart); \
         if (needRestart) goto restart;
 
 #define UPGRADE_LOCK(node, v, needRestart) \
-        (node)->upgradeToWriteLockOrRestart(v, needRestart); \
+        (node)->UpgradeToWriteLockOrRestart(v, needRestart); \
         if (needRestart) goto restart;
 
 #define READ_UNLOCK(node, v, needRestart) \
-        (node)->readUnlockOrRestart(v, needRestart); \
+        (node)->ReadUnlockOrRestart(v, needRestart); \
         if (needRestart) goto restart;
 
 #define WRITE_UNLOCK(node) \
-        (node)->writeUnlock();
+        (node)->WriteUnlock();
 
 #define COUPLING_LOCK(cur, parent, pv, v, needRestart) \
         UPGRADE_LOCK(parent, pv, needRestart) \
-        (cur)->upgradeToWriteLockOrRestart(v, needRestart); \
+        (cur)->UpgradeToWriteLockOrRestart(v, needRestart); \
         if (needRestart) {                             \
-            (parent)->writeUnlock();                   \
+            (parent)->WriteUnlock();                   \
             goto restart;                              \
         }
 
 #define DELETE_UNLOCK(node) \
-        (node)->writeUnlockObsolete();
+        (node)->WriteUnlockObsolete();
 
     template<uint16_t KeyLen>
     ART<KeyLen>::ART(Index::ArtObjPool *art_obj_pool) {
@@ -94,7 +94,7 @@ namespace Index {
     }
 
     template<uint16_t KeyLen>
-    bool ART<KeyLen>::lookup(const Key &key, TID &tid) const {
+    bool ART<KeyLen>::Lookup(const Key &key, TID &tid) const {
         int restartCount = 0;
         restart:
         if (restartCount++) {
@@ -109,18 +109,18 @@ namespace Index {
 
         cur = root_;
         READ_LOCK(cur, v, needRestart)
-        while (key.getKeyLen() > level) {
-            if (checkPrefix(cur, key, level)) { // MATCH
+        while (key.GetKeyLen() > level) {
+            if (CheckPrefix(cur, key, level)) { // MATCH
                 parent = cur;
-                cur = N::getChild(cur, key[level]);
+                cur = N::GetChild(cur, key[level]);
                 READ_LOCK(parent, v, needRestart)
 
                 if (cur == nullptr) {
                     return false;
                 }
-                if (N::isLeaf(cur) && level == key.getKeyLen() - 1) {
+                if (N::IsLeaf(cur) && level == key.GetKeyLen() - 1) {
                     READ_UNLOCK(parent, v, needRestart)
-                    tid = N::getLeaf(cur);
+                    tid = N::GetLeaf(cur);
                     return true;
                 }
             } else {   // NO MATCH
@@ -137,12 +137,12 @@ namespace Index {
     }
 
     template<uint16_t KeyLen>
-    bool ART<KeyLen>::lookup_range(const Key &k1, const Key &k2, vector<TID> &res) {
+    bool ART<KeyLen>::LookupRange(const Key &k1, const Key &k2, vector<TID> &res) {
         return true;
     }
 
     template<uint16_t KeyLen>
-    void ART<KeyLen>::insert(const Key &key, TID tid) {
+    void ART<KeyLen>::Insert(const Key &key, TID tid) {
         int restartCount = 0;
         restart:
         if (restartCount++) {
@@ -159,7 +159,7 @@ namespace Index {
         uint8_t remainPrefix[MAX_PREFIX_LEN];
         uint8_t no_match_key = 0, remain_prefix_len = 0;
 
-        while (level < key.getKeyLen()) {
+        while (level < key.GetKeyLen()) {
             parent = cur;
             pk = k;
             pv = v;
@@ -167,41 +167,41 @@ namespace Index {
             READ_LOCK(cur, v, needRestart)
 
             uint16_t nextLevel = level;
-            if (!checkPrefix(cur, key, nextLevel, no_match_key, remainPrefix, remain_prefix_len)) { /* No Match */
+            if (!CheckPrefix(cur, key, nextLevel, no_match_key, remainPrefix, remain_prefix_len)) { /* No Match */
                 COUPLING_LOCK(cur, parent, pv, v, needRestart)
-                N *newNode = art_obj_pool_->newNode(NT4);
+                N *newNode = art_obj_pool_->NewNode(NT4);
                 N *nextNode = GenNewNode(key, nextLevel + 1, tid);
-                newNode->setPrefix(cur->getPrefix(), nextLevel - level);
-                cur->setPrefix(remainPrefix, remain_prefix_len);
+                newNode->SetPrefix(cur->GetPrefix(), nextLevel - level);
+                cur->SetPrefix(remainPrefix, remain_prefix_len);
 
-                N::setChild(newNode, no_match_key, cur);
-                N::setChild(newNode, key[nextLevel], nextNode);
-                N::changeChild(parent, pk, newNode);
+                N::SetChild(newNode, no_match_key, cur);
+                N::SetChild(newNode, key[nextLevel], nextNode);
+                N::ChangeChild(parent, pk, newNode);
 
                 WRITE_UNLOCK(cur)
                 WRITE_UNLOCK(parent)
                 return;
             }
             k = key[nextLevel];
-            if (!N::getChild(cur, k)) { /* Specific Slot is NULL */
-                if (cur->isFull()) {
+            if (!N::GetChild(cur, k)) { /* Specific Slot is NULL */
+                if (cur->IsFull()) {
                     COUPLING_LOCK(cur, parent, pv, v, needRestart)
-                    N::insertAndGrow(cur, parent, pk, k, GenNewNode(key, nextLevel + 1, tid), art_obj_pool_);
+                    N::InsertAndGrow(cur, parent, pk, k, GenNewNode(key, nextLevel + 1, tid), art_obj_pool_);
                     DELETE_UNLOCK(cur)
                     WRITE_UNLOCK(parent)
-                    art_obj_pool_->gcNode(cur);
+                    art_obj_pool_->GcNode(cur);
                 } else {
                     UPGRADE_LOCK(cur, v, needRestart)
-                    N::setChild(cur, k, GenNewNode(key, nextLevel + 1, tid));
+                    N::SetChild(cur, k, GenNewNode(key, nextLevel + 1, tid));
                     WRITE_UNLOCK(cur)
                 }
                 return;
             } else {
-                next = N::getChild(cur, k);
+                next = N::GetChild(cur, k);
 
-                if (N::isLeaf(next)) { /* The Same Key is thought as Update */
+                if (N::IsLeaf(next)) { /* The Same Key is thought as Update */
                     UPGRADE_LOCK(cur, v, needRestart)
-                    N::changeChild(cur, k, (N *) N::convertToLeaf(tid));
+                    N::ChangeChild(cur, k, (N *) N::ConvertToLeaf(tid));
                     WRITE_UNLOCK(cur)
                     return;
                 }

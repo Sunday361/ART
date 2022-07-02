@@ -62,7 +62,7 @@ namespace Index {
             return keys_[i];
         }
 
-        uint16_t getKeyLen() const {
+        uint16_t GetKeyLen() const {
             return KeyLen;
         }
     };

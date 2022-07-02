@@ -12,9 +12,9 @@ namespace transaction {
 namespace storage {
     class RecordBufferSegment {
     public:
-        bool hasBytesLeft(const uint32_t size) const { return size_ + size <= BUFFER_SEGMENT_SIZE; }
+        bool HasBytesLeft(const uint32_t size) const { return size_ + size <= BUFFER_SEGMENT_SIZE; }
 
-        byte *reserve(const uint32_t size) {
+        byte *Reserve(const uint32_t size) {
             ASSERT(HasBytesLeft(size), "buffer segment allocation out of bounds");
             auto *result = bytes_ + size_;
             size_ += size;

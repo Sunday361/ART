@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include "common/common.h"
 
 namespace storage {
@@ -21,11 +23,11 @@ namespace storage {
     public:
         MEM_REINTERPRETATION_ONLY(ProjectedRow)
 
-        static ProjectedRow *copyProjectedRowLayout(void *head, const ProjectedRow &other);
+        static ProjectedRow *CopyProjectedRowLayout(void *head, const ProjectedRow &other);
 
-        uint32_t size() const { return size_; }
+        uint32_t Size() const { return size_; }
 
-        uint16_t numColumns() const { return num_cols_; }
+        uint16_t NumColumns() const { return num_cols_; }
 
         col_id_t *ColumnIds() { return reinterpret_cast<col_id_t *>(varlen_contents_); }
 
@@ -37,29 +39,29 @@ namespace storage {
         }
 
         const byte *AccessWithNullCheck(const uint16_t offset) const {
-            NOISEPAGE_ASSERT(offset < num_cols_, "Column offset out of bounds.");
+            ASSERT(offset < num_cols_, "Column offset out of bounds.");
             if (!Bitmap().Test(offset)) return nullptr;
             return reinterpret_cast<const byte *>(this) + AttrValueOffsets()[offset];
         }
 
         byte *AccessForceNotNull(const uint16_t offset) {
-            NOISEPAGE_ASSERT(offset < num_cols_, "Column offset out of bounds.");
+            ASSERT(offset < num_cols_, "Column offset out of bounds.");
             if (!Bitmap().Test(offset)) Bitmap().Flip(offset);
             return reinterpret_cast<byte *>(this) + AttrValueOffsets()[offset];
         }
 
         void SetNull(const uint16_t offset) {
-            NOISEPAGE_ASSERT(offset < num_cols_, "Column offset out of bounds.");
+            ASSERT(offset < num_cols_, "Column offset out of bounds.");
             Bitmap().Set(offset, false);
         }
 
         void SetNotNull(const uint16_t offset) {
-            NOISEPAGE_ASSERT(offset < num_cols_, "Column offset out of bounds.");
+            ASSERT(offset < num_cols_, "Column offset out of bounds.");
             Bitmap().Set(offset, true);
         }
 
         bool IsNull(const uint16_t offset) const {
-            NOISEPAGE_ASSERT(offset < num_cols_, "Column offset out of bounds.");
+            ASSERT(offset < num_cols_, "Column offset out of bounds.");
             return !Bitmap().Test(offset);
         }
 
@@ -68,7 +70,7 @@ namespace storage {
             const auto *result = reinterpret_cast<const T *>(AccessWithNullCheck(col_idx));
             // NOLINTNEXTLINE: bugprone-suspicious-semicolon: seems like a false positive because of constexpr
             if constexpr (Nullable) {
-                NOISEPAGE_ASSERT(null != nullptr, "Missing output variable for NULL indicator");
+                ASSERT(null != nullptr, "Missing output variable for NULL indicator");
                 if (result == nullptr) {
                     *null = true;
                     return result;

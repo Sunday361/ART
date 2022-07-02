@@ -1,16 +1,26 @@
 #pragma once
 
+#include <cstdint>
+#include <forward_list>
+
 #include "common/enum_defs.h"
 
 namespace transaction {
 
-    typedef uint64 timestamp_t;
+    class DeferredActionManager;
+    class TransactionContext;
+
+    using timestamp_t = uint64_t;
+
+    static constexpr timestamp_t INVALID_TXN_TIMESTAMP = timestamp_t(INT64_MIN);
+
+    static constexpr timestamp_t INITIAL_TXN_TIMESTAMP = timestamp_t(0);
 
     using DeferredAction = std::function<void(timestamp_t)>;
 
     using TransactionEndAction = std::function<void(DeferredActionManager * )>;
 
-    using TransactionQueue = std::forward_list<transaction::TransactionContext *>;
+    using TransactionQueue = std::forward_list<TransactionContext *>;
 
     using callback_fn = void (*)(void *);
 

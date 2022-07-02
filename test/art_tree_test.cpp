@@ -102,12 +102,12 @@ TEST_F(ART_TEST, ORDER_INSERT_TEST)
     GenOrderedKey<KEY32>(key_list, 100000);
     for (int i = 0; i < 100000; i++) {
         TID tid1 = i;
-        art_tree_32->insert(key_list[i], tid1);
+        art_tree_32->Insert(key_list[i], tid1);
     }
 
     for (int i = 0; i < 100000; i++) {
         TID tid2;
-        art_tree_32->lookup(key_list[i], tid2);
+        art_tree_32->Lookup(key_list[i], tid2);
         EXPECT_EQ(tid2, i);
     }
 }
@@ -120,14 +120,14 @@ TEST_F(ART_TEST, RANDOM_INSERT_TEST)
     GenRandomKey<KEY32>(key_list, NUM);
     for (size_t i = 0; i < NUM; i++) {
         TID tid1;
-        bool find = art_tree_32->lookup(key_list[i], tid1);
+        bool find = art_tree_32->Lookup(key_list[i], tid1);
         EXPECT_EQ(find, false);
-        art_tree_32->insert(key_list[i], i);
+        art_tree_32->Insert(key_list[i], i);
     }
 
     for (size_t j = 0; j < NUM; j++) {
         TID tid2;
-        art_tree_32->lookup(key_list[j], tid2);
+        art_tree_32->Lookup(key_list[j], tid2);
         EXPECT_EQ(tid2, j);
     }
 }
@@ -144,14 +144,14 @@ TEST_F(ART_TEST, CONCURRENT_INSERT_TEST)
 
     std::function<void(size_t, size_t)> insert = [&](size_t i, size_t j) {
         for (size_t k = i; k < j; k++) {
-            art_tree_32->insert(key_list[k], k);
+            art_tree_32->Insert(key_list[k], k);
         }
     };
 
     std::function<void(size_t, size_t)> lookup = [&](size_t i, size_t j) {
         for (size_t k = i; k <= j; k++) {
             TID tid;
-            bool find = art_tree_32->lookup(key_list[k], tid);
+            bool find = art_tree_32->Lookup(key_list[k], tid);
             EXPECT_EQ(find, true);
             EXPECT_EQ(tid, k);
         }
@@ -167,7 +167,7 @@ TEST_F(ART_TEST, CONCURRENT_INSERT_TEST)
 
     for (size_t j = 0; j < NUM; j++) {
         TID tid2;
-        art_tree_32->lookup(key_list[j], tid2);
+        art_tree_32->Lookup(key_list[j], tid2);
         EXPECT_EQ(tid2, j);
     }
 }

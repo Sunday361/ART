@@ -52,7 +52,7 @@ namespace Index {
             return nullptr;
         }
 
-        N* newNode(type t) {
+        N* NewNode(type t) {
             Node *head = nullptr;
             switch (t) {
                 case NT4: {
@@ -87,9 +87,9 @@ namespace Index {
             return __newNode(t);
         }
 
-        void gcNode(N* n) {
+        void GcNode(N* n) {
             Node* head = reinterpret_cast<Node*>(n);
-            switch (n->getType()) {
+            switch (n->GetType()) {
                 case NT4: {
                     do {
                         head->next = list4_.load(std::memory_order_relaxed);

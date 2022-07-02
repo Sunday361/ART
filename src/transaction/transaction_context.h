@@ -4,24 +4,27 @@
 #include <forward_list>
 #include <vector>
 
-#include "transaction_defs.h"
-#include "storage/record_buffer.h"
-#include "storage/log_record.h"
+#include <storage/log_manager.h>
+#include <storage/record_buffer.h>
+#include <storage/log_record.h>
+#include <transaction/transaction_defs.h>
 
 namespace transaction {
 
     class TransactionContext {
+        friend class TransactionManager;
+
         timestamp_t start_time_;
         std::atomic<timestamp_t> finish_time_;
         storage::UndoBuffer undo_buffer_;
         storage::RedoBuffer redo_buffer_;
         /* This is for gc VarLen entry */
         std::vector<const byte *> loose_ptrs_;
-        std::forward_list<TransactionManager *> abort_actions_;
-        std::forward_list<TransactionManager *> commit_actions_;
+        std::forward_list<TransactionEndAction> abort_actions_;
+        std::forward_list<TransactionEndAction> commit_actions_;
 
         bool aborted_ = false;
-        bool must_aborted_ = false;
+        bool must_abort_ = false;
 
         /** The durability policy controls whether commits must wait for logs to be written to disk. */
         DurabilityPolicy durability_policy_ = DurabilityPolicy::SYNC;
@@ -39,8 +42,8 @@ namespace transaction {
 
     public:
         TransactionContext(const timestamp_t start, const timestamp_t finish,
-                           const storage::RecordBufferSegmentPool *buffer_pool,
-                           const storage::LogManager (log_manager))
+                           storage::RecordBufferSegmentPool *buffer_pool,
+                           storage::LogManager *log_manager)
                 : start_time_(start),
                   finish_time_(finish),
                   undo_buffer_(buffer_pool),
@@ -72,7 +75,7 @@ namespace transaction {
             return storage::UndoRecord::InitializeDelete(result, finish_time_.load(), slot, table);
         }
 
-        storage::RedoRecord *StageWrite(const catalog::db_oid_t db_oid, const catalog::table_oid_t table_oid,
+        storage::RedoRecord *StageWrite(const db_oid_t db_oid, const table_oid_t table_oid,
                                         const storage::ProjectedRowInitializer &initializer) {
             const uint32_t size = storage::RedoRecord::Size(initializer);
             auto *const log_record = storage::RedoRecord::Initialize(redo_buffer_.NewEntry(size, GetTransactionPolicy()),
@@ -80,7 +83,7 @@ namespace transaction {
             return log_record->GetUnderlyingRecordBodyAs<storage::RedoRecord>();
         }
 
-        void StageDelete(const catalog::db_oid_t db_oid, const catalog::table_oid_t table_oid,
+        void StageDelete(const db_oid_t db_oid, const table_oid_t table_oid,
                          const storage::TupleSlot slot) {
             const uint32_t size = storage::DeleteRecord::Size();
             storage::DeleteRecord::Initialize(redo_buffer_.NewEntry(size, GetTransactionPolicy()), start_time_, db_oid,

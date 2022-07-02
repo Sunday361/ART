@@ -2,10 +2,11 @@
 
 #include <algorithm>
 #include <vector>
-#include <set>
+#include <unordered_set>
 
 #include "common/common.h"
 #include "common/spin_lock.h"
+#include "transaction_defs.h"
 
 namespace transaction {
     class TimestampManager {
@@ -15,24 +16,22 @@ namespace transaction {
                    "Destroying the TimestampManager while txns are still running. That seems wrong.");
         }
 
-        timestamp_t checkOutTimestamp() { return time_++; }
+        timestamp_t CheckOutTimestamp() { return time_++; }
 
-        timestamp_t currentTime() const { return time_.load(); }
+        timestamp_t CurrentTime() const { return time_.load(); }
 
-        timestamp_t oldestTransactionStartTime();
+        timestamp_t OldestTransactionStartTime();
 
-        timestamp_t cachedOldestTransactionStartTime();
+        timestamp_t CachedOldestTransactionStartTime();
 
     private:
 
         friend class TransactionManager;
 
-        friend class storage::LogSerializerTask;
-
-        timestamp_t beginTransaction() {
+        timestamp_t BeginTransaction() {
             timestamp_t start_time;
             {
-                ScopedSpinLatch running_guard(&curr_running_txns_latch_);
+                SpinLatch::ScopedSpinLatch running_guard(&curr_running_txns_latch_);
                 start_time = time_++;
 
                 const auto ret
@@ -42,9 +41,9 @@ namespace transaction {
             return start_time;
         }
 
-        void removeTransaction(timestamp_t timestamp);
+        void RemoveTransaction(timestamp_t timestamp);
 
-        bool removeTransactions(const std::vector<timestamp_t> &timestamps);
+        bool RemoveTransactions(const std::vector<timestamp_t> &timestamps);
 
         std::atomic<timestamp_t> time_{0};
         // We cache the oldest txn start time

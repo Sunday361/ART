@@ -11,7 +11,7 @@
 #include "common/common.h"
 #include "art_node.h"
 #include "art_obj_pool.h"
-#include "catalog.h"
+#include "common/catalog.h"
 
 namespace Index {
 
@@ -40,9 +40,9 @@ namespace Index {
 
         void yield(int count) const;
 
-        bool checkPrefix(N *n, const Key &k, uint16_t &level) const {
-            for (int i = 0; i < n->getPrefixLen(); i++) {
-                if (level >= k.getKeyLen() || k[level] != n->getPrefix()[i]) {
+        bool CheckPrefix(N *n, const Key &k, uint16_t &level) const {
+            for (int i = 0; i < n->GetPrefixLen(); i++) {
+                if (level >= k.GetKeyLen() || k[level] != n->GetPrefix()[i]) {
                     return false;
                 }
                 level++;
@@ -50,14 +50,14 @@ namespace Index {
             return true;
         }
 
-        bool checkPrefix(N *n, const Key &k, uint16_t &level,
+        bool CheckPrefix(N *n, const Key &k, uint16_t &level,
                          uint8_t &no_match_key, uint8_t *remain, uint8_t &remain_len) const {
-            for (int i = 0; i < n->getPrefixLen(); i++) {
-                if (k[level] != n->getPrefix()[i]) {
-                    no_match_key = n->getPrefix()[i];
-                    if (i + 1 < n->getPrefixLen()) {
-                        memcpy(remain, &n->getPrefix()[i + 1], n->getPrefixLen() - i - 1);
-                        remain_len = n->getPrefixLen() - i - 1;
+            for (int i = 0; i < n->GetPrefixLen(); i++) {
+                if (k[level] != n->GetPrefix()[i]) {
+                    no_match_key = n->GetPrefix()[i];
+                    if (i + 1 < n->GetPrefixLen()) {
+                        memcpy(remain, &n->GetPrefix()[i + 1], n->GetPrefixLen() - i - 1);
+                        remain_len = n->GetPrefixLen() - i - 1;
                     }
                     return false;
                 }
@@ -70,24 +70,24 @@ namespace Index {
             N *n;
             uint8_t p_len;
 
-            if (level < key.getKeyLen()) {
+            if (level < key.GetKeyLen()) {
                 n = new N4();
-                p_len = min(MAX_PREFIX_LEN, key.getKeyLen() - level - 1);
-                n->setPrefix((uint8_t *) &key[level], p_len);
+                p_len = min(MAX_PREFIX_LEN, key.GetKeyLen() - level - 1);
+                n->SetPrefix((uint8_t *) &key[level], p_len);
                 level += p_len;
 
-                N::setChild(n, key[level], GenNewNode(key, level + 1, tid));
+                N::SetChild(n, key[level], GenNewNode(key, level + 1, tid));
             } else {
-                return (N *) N::convertToLeaf(tid);
+                return (N *) N::ConvertToLeaf(tid);
             }
             return n;
         }
 
-        bool lookup(const Key &key, TID &tid) const;
+        bool Lookup(const Key &key, TID &tid) const;
 
-        bool lookup_range(const Key &k1, const Key &k2, vector<TID> &res);
+        bool LookupRange(const Key &k1, const Key &k2, vector<TID> &res);
 
-        void insert(const Key &key, TID tid);
+        void Insert(const Key &key, TID tid);
     };
 }
 extern template class Index::ART<32>;

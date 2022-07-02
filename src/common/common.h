@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <cstring>
 #include <atomic>
+#include <iostream>
+#include <emmintrin.h>
 
 using namespace std;
 
@@ -60,6 +62,8 @@ using namespace std;
 using TID = uint64_t;
 
 using col_id_t = uint16_t;
+using db_oid_t = uint32_t;
+using table_oid_t = uint32_t;
 
 #define BYTE_SIZE 8u
 #define LSB_ONE_HOT_MASK(n) (1U << n)
@@ -224,6 +228,54 @@ private:
     bool IsAlignedAndFits(const uint32_t bits_left, const uint32_t byte_pos) const {
         return bits_left >= sizeof(T) * BYTE_SIZE && byte_pos % sizeof(T) == 0;
     }
+};
+
+class Gate {
+    std::atomic<int64_t> count_ = 0;
+public:
+    void Lock() { count_++; }
+
+    void Unlock() { count_--; }
+
+    void Traverse() {
+        while (count_.load() > 0) {
+            _mm_pause();
+        }
+    }
+
+    class ScopedLock {
+    public:
+        /**
+         * Add a lock to the gate
+         * @param gate pointer to Gate to lock
+         */
+        explicit ScopedLock(Gate *const gate) : gate_(gate) { gate_->Lock(); }
+
+        /**
+         * Undo the lock that was added in the constructor
+         */
+        ~ScopedLock() { gate_->Unlock(); }
+        DISALLOW_COPY_AND_MOVE(ScopedLock)
+    private:
+        Gate *const gate_;
+    };
+
+    class ScopedExit {
+    public:
+        /**
+         * Add requirement to traverse gate on destruction
+         * @param gate pointer to Gate that will be traversed
+         */
+        explicit ScopedExit(Gate *const gate) : gate_(gate) {}
+
+        /**
+         * Traverse the gate while being destructed
+         */
+        ~ScopedExit() { gate_->Traverse(); }
+        DISALLOW_COPY_AND_MOVE(ScopedExit)
+    private:
+        Gate *const gate_;
+    };
 };
 
 

@@ -8,8 +8,10 @@
 #include "storage/record_buffer.h"
 #include "storage/tuple_access_strategy.h"
 #include "common/spin_lock.h"
+#include "common/common.h"
 
 namespace transaction {
+
     class TransactionManager {
         TimestampManager* timestamp_manager_;
 
@@ -17,9 +19,11 @@ namespace transaction {
 
         storage::RecordBufferSegmentPool* buffer_pool_;
 
-        storage::LogManager log_manager_;
-
         const bool gc_enabled_ = false;
+
+        storage::LogManager* log_manager_;
+
+        Gate gate_;
 
         TransactionQueue completed_txns_;
 
@@ -42,17 +46,17 @@ namespace transaction {
                                              const storage::TupleAccessStrategy &accessor) const;
         void GCLastUpdateOnAbort(TransactionContext *txn);
     public:
-        TransactionManager(const TimestampManager* timestamp_manager,
-                           const DeferredActionManager* deferred_action_manager,
-                           const storage::RecordBufferSegmentPool* buffer_pool, const bool gc_enabled,
-                           const bool wal_async_commit_enable, const storage::LogManager* log_manager)
+        TransactionManager(TimestampManager* timestamp_manager,
+                           DeferredActionManager* deferred_action_manager,
+                           storage::RecordBufferSegmentPool* buffer_pool, const bool gc_enabled,
+                           const bool wal_async_commit_enable, storage::LogManager* log_manager)
                 : timestamp_manager_(timestamp_manager),
                   deferred_action_manager_(deferred_action_manager),
                   buffer_pool_(buffer_pool),
                   gc_enabled_(gc_enabled),
                   log_manager_(log_manager) {
-            ASSERT(timestamp_manager_ != DISABLED, "transaction manager cannot function without a timestamp manager");
-            ASSERT(!wal_async_commit_enable || (wal_async_commit_enable && log_manager_ != DISABLED),
+            ASSERT(timestamp_manager_ != nullptr, "transaction manager cannot function without a timestamp manager");
+            ASSERT(!wal_async_commit_enable || (wal_async_commit_enable && log_manager_ != nullptr),
                              "Doesn't make sense to enable async commit without enabling logging.");
             if (wal_async_commit_enable) {
                 SetDefaultTransactionDurabilityPolicy(transaction::DurabilityPolicy::ASYNC);

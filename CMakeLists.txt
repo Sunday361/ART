@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)     # Require C++17 support
 project(ART_TREE)
 
 # People keep running CMake in the wrong folder, completely nuking their project or creating weird bugs.
-# This checks if you're running CMake from a folder that already has CMakeLists.txt.
+# This checks if you're running CMake from a folder that already has xxhash.cmake.
 # Importantly, this catches the common case of running it from the root directory.
 file(TO_CMAKE_PATH "${PROJECT_BINARY_DIR}/CMakeLists.txt" PATH_TO_CMAKELISTS_TXT)
 if (EXISTS "${PATH_TO_CMAKELISTS_TXT}")
@@ -62,7 +62,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 # Includes.
 set(SRC_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/src)
 set(TEST_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/test)
-set(THIRD_PARTY_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/third_party)
+set(THIRD_PARTY_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/cmake)
 include_directories(${SRC_INCLUDE_DIR} ${TEST_INCLUDE_DIR} ${THIRD_PARTY_INCLUDE_DIR})
 include_directories(BEFORE src) # This is needed for gtest.
 
