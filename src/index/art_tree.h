@@ -38,6 +38,8 @@ namespace Index {
 
         ~ART();
 
+        void gcAllNode(N* n);
+
         void yield(int count) const;
 
         bool checkPrefix(N *n, const Key &k, uint16_t &level) const {
@@ -85,7 +87,7 @@ namespace Index {
 
         bool lookup(const Key &key, TID &tid) const;
 
-        bool lookup_range(const Key &k1, const Key &k2, vector<TID> &res);
+        bool lookupRange(const Key &k1, const Key &k2, vector<TID> &res);
 
         void insert(const Key &key, TID tid);
     };

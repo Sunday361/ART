@@ -27,12 +27,12 @@ namespace Index {
         atomic<uint64_t> lock_{0b100};
 
     public:
-        static bool isLeaf(void *ptr) {
+        static bool isLeaf(const N *ptr) {
             uint64_t d = uint64_t(ptr);
             return (d & LEAF) == LEAF;
         }
 
-        static uint64_t getLeaf(void *ptr) {
+        static uint64_t getLeaf(const N *ptr) {
             uint64_t d = uint64_t(ptr);
             return (d & ~LEAF);
         }

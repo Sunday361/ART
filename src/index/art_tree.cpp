@@ -113,7 +113,7 @@ namespace Index {
             if (checkPrefix(cur, key, level)) { // MATCH
                 parent = cur;
                 cur = N::getChild(cur, key[level]);
-                READ_LOCK(parent, v, needRestart)
+                READ_UNLOCK(parent, v, needRestart)
 
                 if (cur == nullptr) {
                     return false;
@@ -137,8 +137,113 @@ namespace Index {
     }
 
     template<uint16_t KeyLen>
-    bool ART<KeyLen>::lookup_range(const Key &k1, const Key &k2, vector<TID> &res) {
-        return true;
+    bool ART<KeyLen>::lookupRange(const Key &k1, const Key &k2, vector<TID> &res) {
+
+        std::function<void(const N*)> copy = [&](const N* cur) {
+            if (N::isLeaf(cur)) {
+                res.push_back(N::getLeaf(cur));
+            } else {
+                std::tuple<uint8_t, N*> children[256];
+                uint16_t len;
+
+                N::GetChildren(cur, 0, 255, children, len);
+                for (uint16_t i = 0; i < len; i++) {
+                    const N* n = std::get<1>(children[i]);
+                    copy(n);
+                }
+            }
+        };
+
+        std::function<void(const N*, uint16_t&)> find_start = [&](const N* cur, uint16_t& level) {
+            int res = CheckPrefix(cur, k1, level);
+            if (res > 0) {
+                return ;
+            } else if (res < 0) {
+                copy(cur);
+            } else {
+                std::tuple<uint8_t, N*> children[256];
+                uint16_t len;
+
+                N::GetChildren(cur, k1[level], 255, children, len);
+                for (int i = 0; i < len; i++) {
+                    const N* child = std::get<1>(children[i]);
+                    if (i == 0) {
+                        find_start(child, level);
+                    } else {
+                        copy(child);
+                    }
+                }
+            }
+        };
+
+        std::function<void(const N*, uint16_t&)> find_end = [&](const N* cur, uint16_t& level) {
+            int res = CheckPrefix(cur, k1, level);
+            if (res < 0) {
+                return ;
+            } else if (res > 0) {
+                copy(cur);
+            } else {
+                std::tuple<uint8_t, N*> children[256];
+                uint16_t len;
+
+                N::GetChildren(cur, 0, k1[level], children, len);
+                for (int i = 0; i < len; i++) {
+                    const N* child = std::get<1>(children[i]);
+                    if (i == len - 1) {
+                        find_end(child, level);
+                    } else {
+                        copy(child);
+                    }
+                }
+            }
+        };
+
+        int restartCount = 0;
+        restart:
+        if (restartCount++) {
+            yield(restartCount);
+        }
+        bool needRestart = false;
+
+        uint16_t level = 0;
+        N* cur = root_;
+        N* parent = nullptr;
+        uint64_t v = 0;
+        uint16_t start_key, end_key;
+
+        while (true) {
+            READ_LOCK(cur, v, needRestart)
+            if (CheckPrefix(cur, k1, k2, level, start_key, end_key)) {
+                std::tuple<uint8_t, N*> children[256];
+                uint16_t len;
+
+                N::GetChildren(cur, start_key, end_key, children, len);
+
+                if (len >= 2) {
+                    for (int i = 0; i < len; ++i) {
+                        const N *n = std::get<1>(children[i]);
+                        if (i == 0) {
+                            uint16_t level_copy = level;
+                            find_start(n, level_copy);
+                        } else if (i == len - 1) {
+                            uint16_t level_copy = level;
+                            find_end(n, level_copy);
+                        } else {
+                            copy(n);
+                        }
+                    }
+                } else if (len == 1) {
+                    READ_CHECK(cur, v, needRestart)
+                    parent = cur;
+                    cur = N::GetChild(cur, start_key);
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+            level++;
+        }
     }
 
     template<uint16_t KeyLen>

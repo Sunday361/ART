@@ -96,6 +96,36 @@ protected:
     }
 };
 
+TEST_F(ART_TEST, CURRENT_LOOKUP)
+{
+    vector<KEY<KEY32>> key_list;
+    GenOrderedKey<KEY32>(key_list, 100000);
+
+    std::function<void(size_t, size_t)> lookup = [&](size_t i, size_t j) {
+        for (size_t k = i; k < j; k++) {
+            TID tid;
+            bool find = art_tree_32->lookup(key_list[k], tid);
+            EXPECT_EQ(find, true);
+            EXPECT_EQ(tid, k);
+        }
+    };
+
+    for (int i = 0; i < 100000; i++) {
+        TID tid1 = i;
+        art_tree_32->insert(key_list[i], tid1);
+    }
+    vector<std::thread*> threads;
+    size_t ThreadNum = 4;
+    size_t CountPerThread = 100000 / ThreadNum;
+    for (size_t i = 0; i < ThreadNum; i++) {
+        threads.emplace_back(new thread(lookup, i * CountPerThread, (i + 1) * CountPerThread));
+    }
+
+    for (size_t i = 0; i < ThreadNum; i++) {
+        threads[i]->join();
+    }
+}
+
 TEST_F(ART_TEST, ORDER_INSERT_TEST)
 {
     vector<KEY<KEY32>> key_list;
@@ -170,6 +200,164 @@ TEST_F(ART_TEST, CONCURRENT_INSERT_TEST)
         art_tree_32->lookup(key_list[j], tid2);
         EXPECT_EQ(tid2, j);
     }
+}
+
+TEST_F(ART_TEST, CONCURRENT_INSERT1_AND_LOOKUP4_TEST)
+{
+    const size_t NUM = 256*256*64;
+    const size_t ThreadNum = 4;
+    const size_t CountPerThread = NUM / ThreadNum;
+    vector<KEY<KEY32>> key_list;
+    vector<std::thread*> threads;
+
+    GenRandomKey<KEY32>(key_list, NUM + CountPerThread);
+
+    std::function<void(size_t, size_t)> insert = [&](size_t i, size_t j) {
+        for (size_t k = i; k < j; k++) {
+            art_tree_32->insert(key_list[k], k);
+        }
+    };
+
+    std::function<void(size_t, size_t)> lookup = [&](size_t i, size_t j) {
+        for (size_t k = i; k < j; k++) {
+            TID tid;
+            art_tree_32->lookup(key_list[k], tid);
+            //EXPECT_EQ(find, true);
+            //EXPECT_EQ(tid, k);
+        }
+    };
+
+    for (size_t i = 0; i < ThreadNum; i++) {
+        threads.emplace_back(new thread(insert, i * CountPerThread, (i + 1) * CountPerThread));
+    }
+
+    for (size_t i = 0; i < ThreadNum; i++) {
+        threads[i]->join();
+    }
+
+    threads.clear();
+
+    auto now = std::chrono::steady_clock::now();
+    for (size_t i = 0; i < ThreadNum; i++) {
+        threads.emplace_back(new thread(lookup, i * CountPerThread, (i + 1) * CountPerThread));
+    }
+    threads.emplace_back(new thread(insert, ThreadNum * CountPerThread, (ThreadNum + 1) * CountPerThread));
+
+    for (size_t i = 0; i < threads.size(); i++) {
+        threads[i]->join();
+    }
+    auto end = std::chrono::steady_clock::now();
+
+    cout << std::setw(9) << std::chrono::duration<double>(end - now).count() << endl;
+}
+
+TEST_F(ART_TEST, CONCURRENT_INSERT1_AND_LOOKUP8_TEST)
+{
+    const size_t NUM = 256*256*64;
+    const size_t ThreadNum = 4;
+    const size_t CountPerThread = NUM / ThreadNum;
+    vector<KEY<KEY32>> key_list;
+    vector<std::thread*> threads;
+
+    GenRandomKey<KEY32>(key_list, NUM + CountPerThread);
+
+    std::function<void(size_t, size_t)> insert = [&](size_t i, size_t j) {
+        for (size_t k = i; k < j; k++) {
+            art_tree_32->insert(key_list[k], k);
+        }
+    };
+
+    std::function<void(size_t, size_t)> lookup = [&](size_t i, size_t j) {
+        for (size_t k = i; k < j; k++) {
+            TID tid;
+            art_tree_32->lookup(key_list[k], tid);
+            //EXPECT_EQ(find, true);
+            //EXPECT_EQ(tid, k);
+        }
+    };
+
+    for (size_t i = 0; i < ThreadNum; i++) {
+        threads.emplace_back(new thread(insert, i * CountPerThread, (i + 1) * CountPerThread));
+    }
+
+    for (size_t i = 0; i < ThreadNum; i++) {
+        threads[i]->join();
+    }
+
+    threads.clear();
+
+    auto now = std::chrono::steady_clock::now();
+    for (size_t i = 0; i < ThreadNum; i++) {
+        threads.emplace_back(new thread(lookup, i * CountPerThread, (i + 1) * CountPerThread));
+    }
+    for (size_t i = 0; i < ThreadNum; i++) {
+        threads.emplace_back(new thread(lookup, i * CountPerThread, (i + 1) * CountPerThread));
+    }
+    threads.emplace_back(new thread(insert, ThreadNum * CountPerThread, (ThreadNum + 1) * CountPerThread));
+    for (size_t i = 0; i < threads.size(); i++) {
+        threads[i]->join();
+    }
+    auto end = std::chrono::steady_clock::now();
+
+    cout << std::setw(9) << std::chrono::duration<double>(end - now).count() << endl;
+}
+
+TEST_F(ART_TEST, CONCURRENT_INSERT1_AND_LOOKUP16_TEST)
+{
+    const size_t NUM = 256*256*64;
+    const size_t ThreadNum = 4;
+    const size_t CountPerThread = NUM / ThreadNum;
+    vector<KEY<KEY32>> key_list;
+    vector<std::thread*> threads;
+
+    GenRandomKey<KEY32>(key_list, NUM);
+
+    std::function<void(size_t, size_t)> insert = [&](size_t i, size_t j) {
+        for (size_t k = i; k < j; k++) {
+            art_tree_32->insert(key_list[k], k);
+        }
+    };
+
+    std::function<void(size_t, size_t)> lookup = [&](size_t i, size_t j) {
+        for (size_t k = i; k < j; k++) {
+            TID tid;
+            art_tree_32->lookup(key_list[k], tid);
+            //EXPECT_EQ(find, true);
+            //EXPECT_EQ(tid, k);
+        }
+    };
+
+    for (size_t i = 0; i < ThreadNum; i++) {
+        threads.emplace_back(new thread(insert, i * CountPerThread, (i + 1) * CountPerThread));
+    }
+
+    for (size_t i = 0; i < ThreadNum; i++) {
+        threads[i]->join();
+    }
+
+    threads.clear();
+    auto now = std::chrono::steady_clock::now();
+
+    for (size_t i = 0; i < ThreadNum; i++) {
+        threads.emplace_back(new thread(lookup, i * CountPerThread, (i + 1) * CountPerThread));
+    }
+    for (size_t i = 0; i < ThreadNum; i++) {
+        threads.emplace_back(new thread(lookup, i * CountPerThread, (i + 1) * CountPerThread));
+    }
+    for (size_t i = 0; i < ThreadNum; i++) {
+        threads.emplace_back(new thread(lookup, i * CountPerThread, (i + 1) * CountPerThread));
+    }
+    for (size_t i = 0; i < ThreadNum; i++) {
+        threads.emplace_back(new thread(lookup, i * CountPerThread, (i + 1) * CountPerThread));
+    }
+    //threads.emplace_back(new thread(insert, ThreadNum * CountPerThread, (ThreadNum + 1) * CountPerThread));
+    //auto now = std::chrono::steady_clock::now();
+    for (size_t i = 0; i < threads.size(); i++) {
+        threads[i]->join();
+    }
+    auto end = std::chrono::steady_clock::now();
+
+    cout << std::setw(9) << std::chrono::duration<double>(end - now).count() << endl;
 }
 
 //TEST_F(ART_TEST, ART_OBJ_POOL)
