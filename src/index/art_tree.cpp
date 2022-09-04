@@ -86,6 +86,27 @@ namespace Index {
     }
 
     template<uint16_t KeyLen>
+    ART<KeyLen>::~ART() {
+        //GC(root_);
+    }
+
+    template<uint16_t KeyLen>
+    void ART<KeyLen>::GC(N* n) {
+        if (N::isLeaf(n)) return ;
+        std::tuple<uint8_t, N*> children[256];
+        uint16_t len;
+
+        N::getChildren(n, 0, 255, children, len);
+        for (uint16_t i = 0; i < len; i++) {
+            auto node = std::get<1>(children[i]);
+            if (!N::isLeaf(node)) {
+                GC(node);
+            }
+        }
+        delete n;
+    }
+
+    template<uint16_t KeyLen>
     void ART<KeyLen>::yield(int count) const {
         if (count > 3)
             sched_yield();
@@ -146,7 +167,7 @@ namespace Index {
                 std::tuple<uint8_t, N*> children[256];
                 uint16_t len;
 
-                N::GetChildren(cur, 0, 255, children, len);
+                N::getChildren(cur, 0, 255, children, len);
                 for (uint16_t i = 0; i < len; i++) {
                     const N* n = std::get<1>(children[i]);
                     copy(n);
@@ -155,7 +176,7 @@ namespace Index {
         };
 
         std::function<void(const N*, uint16_t&)> find_start = [&](const N* cur, uint16_t& level) {
-            int res = CheckPrefix(cur, k1, level);
+            int res = checkPrefix(cur, k1, level);
             if (res > 0) {
                 return ;
             } else if (res < 0) {
@@ -164,7 +185,7 @@ namespace Index {
                 std::tuple<uint8_t, N*> children[256];
                 uint16_t len;
 
-                N::GetChildren(cur, k1[level], 255, children, len);
+                N::getChildren(cur, k1[level], 255, children, len);
                 for (int i = 0; i < len; i++) {
                     const N* child = std::get<1>(children[i]);
                     if (i == 0) {
@@ -177,7 +198,7 @@ namespace Index {
         };
 
         std::function<void(const N*, uint16_t&)> find_end = [&](const N* cur, uint16_t& level) {
-            int res = CheckPrefix(cur, k1, level);
+            int res = checkPrefix(cur, k1, level);
             if (res < 0) {
                 return ;
             } else if (res > 0) {
@@ -186,7 +207,7 @@ namespace Index {
                 std::tuple<uint8_t, N*> children[256];
                 uint16_t len;
 
-                N::GetChildren(cur, 0, k1[level], children, len);
+                N::getChildren(cur, 0, k1[level], children, len);
                 for (int i = 0; i < len; i++) {
                     const N* child = std::get<1>(children[i]);
                     if (i == len - 1) {
@@ -207,17 +228,17 @@ namespace Index {
 
         uint16_t level = 0;
         N* cur = root_;
-        N* parent = nullptr;
+        N* parent;
         uint64_t v = 0;
         uint16_t start_key, end_key;
 
         while (true) {
             READ_LOCK(cur, v, needRestart)
-            if (CheckPrefix(cur, k1, k2, level, start_key, end_key)) {
+            if (checkPrefix(cur, k1, k2, level, start_key, end_key)) {
                 std::tuple<uint8_t, N*> children[256];
                 uint16_t len;
 
-                N::GetChildren(cur, start_key, end_key, children, len);
+                N::getChildren(cur, start_key, end_key, children, len);
 
                 if (len >= 2) {
                     for (int i = 0; i < len; ++i) {
@@ -233,9 +254,9 @@ namespace Index {
                         }
                     }
                 } else if (len == 1) {
-                    READ_CHECK(cur, v, needRestart)
+                    READ_UNLOCK(cur, v, needRestart)
                     parent = cur;
-                    cur = N::GetChild(cur, start_key);
+                    cur = N::getChild(parent, start_key);
                 } else {
                     return false;
                 }
@@ -287,6 +308,7 @@ namespace Index {
                 WRITE_UNLOCK(parent)
                 return;
             }
+            READ_UNLOCK(cur, v, needRestart)
             k = key[nextLevel];
             if (!N::getChild(cur, k)) { /* Specific Slot is NULL */
                 if (cur->isFull()) {

@@ -20,26 +20,34 @@ namespace Index {
     public:
         ~ArtObjPool() {
             Node *head = nullptr;
-
+            uint64_t count = 0;
             while ((head = list4_.load()) != nullptr) {
                 list4_.store(head->next);
                 delete (N4*)head;
+                count++;
             }
-
+            cout << count << endl;
+            count = 0;
             while ((head = list16_.load()) != nullptr) {
                 list16_.store(head->next);
                 delete (N16*)head;
+                count++;
             }
-
+            cout << count << endl;
+            count = 0;
             while ((head = list48_.load()) != nullptr) {
                 list48_.store(head->next);
                 delete (N48*)head;
+                count++;
             }
-
+            cout << count << endl;
+            count = 0;
             while ((head = list256_.load()) != nullptr) {
                 list256_.store(head->next);
                 delete (N256*)head;
+                count++;
             }
+            cout << count << endl;
         }
 
         N* __newNode(type t) {

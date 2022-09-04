@@ -53,11 +53,11 @@ namespace Index {
             return pCount_;
         }
 
-        uint8_t *getPrefix() {
+        const uint8_t *getPrefix() const {
             return &prefix[0];
         }
 
-        void setPrefix(uint8_t *c, uint8_t len) {
+        void setPrefix(const uint8_t *c, uint8_t len) {
             memcpy(this->prefix, c, len);
             this->pCount_ = len;
         }
@@ -116,6 +116,9 @@ namespace Index {
 
         static bool changeChild(N *n, const uint8_t k, N *child);
 
+        static void getChildren(const N* n, const uint8_t start, const uint8_t end,
+                                std::tuple<uint8_t, N*>* const &children, uint16_t& len);
+
         template<typename Node>
         void copyTo(Node *n);
 
@@ -167,6 +170,15 @@ namespace Index {
         void copyTo(N *n) {
             for (int i = 0; i < count_; i++) {
                 n->setChild(keys_[i], children_[i]);
+            }
+        }
+
+        void getChildren(const uint8_t start, const uint8_t end,
+                         std::tuple<uint8_t, N*>* const &children, uint16_t &len) const {
+            for (int i = 0; i < count_; i++) {
+                if (keys_[i] <= end && keys_[i] >= start) {
+                    children[len++] = std::make_tuple(keys_[i], children_[i]);
+                }
             }
         }
     };
@@ -250,6 +262,18 @@ namespace Index {
                 n->setChild(flipSign(keys_[i]), children_[i]);
             }
         }
+
+        void getChildren(const uint8_t start, const uint8_t end,
+                         std::tuple<uint8_t, N*>* const &children, uint16_t &len) const {
+            auto start_pos = getChildPos(start);
+            auto end_pos = getChildPos(end);
+            if (!start_pos) start_pos = children_;
+            if (!end_pos) end_pos = children_ + (count_ - 1);
+
+            for (auto p = start_pos; p <= end_pos; p++) {
+                children[len++] = std::make_tuple(flipSign(keys_[p - children_]), *p);
+            }
+        }
     };
 
     class N48 : public N {
@@ -288,6 +312,15 @@ namespace Index {
                     n->setChild(i, children_[keys_[i]]);
             }
         }
+
+        void getChildren(const uint8_t start, const uint8_t end,
+                         std::tuple<uint8_t, N*>* const &children, uint16_t &len) const {
+            for (uint8_t k = start; k <= end; k++) {
+                if (keys_[k] != emptyMarker) {
+                    children[len++] = std::make_tuple(k, children_[keys_[k]]);
+                }
+            }
+        }
     };
 
     class N256 : public N {
@@ -316,6 +349,14 @@ namespace Index {
         void copyTo(N *n) {
             for (int i = 0; i < 256; i++) {
                 n->setChild(i, children_[i]);
+            }
+        }
+
+        void getChildren(const uint8_t start, const uint8_t end,
+                         std::tuple<uint8_t, N*>* const &children, uint16_t &len) const {
+            for (uint8_t k = start; k <= end; k++) {
+                if (children_[k])
+                    children[len++] = std::make_tuple(k, children_[k]);
             }
         }
     };

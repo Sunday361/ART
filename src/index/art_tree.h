@@ -33,16 +33,16 @@ namespace Index {
 
         Index::ArtObjPool *art_obj_pool_ = nullptr;
 
+        void GC(N* n);
+
     public:
         ART(Index::ArtObjPool *art_obj_pool);
 
         ~ART();
 
-        void gcAllNode(N* n);
-
         void yield(int count) const;
 
-        bool checkPrefix(N *n, const Key &k, uint16_t &level) const {
+        bool checkPrefix(const N *n, const Key &k, uint16_t &level) const {
             for (int i = 0; i < n->getPrefixLen(); i++) {
                 if (level >= k.getKeyLen() || k[level] != n->getPrefix()[i]) {
                     return false;
@@ -52,7 +52,29 @@ namespace Index {
             return true;
         }
 
-        bool checkPrefix(N *n, const Key &k, uint16_t &level,
+        bool checkPrefix(const N* n, const Key &start, const Key &end, uint16_t &level,
+                         uint16_t& k1, uint16_t& k2) const {
+            uint8_t start_key, end_key;
+            k1 = k2 = -1;
+            for (int i = 0; i < n->getPrefixLen(); i++) {
+                start_key = start[level];
+                end_key = end[level];
+
+                if (start_key > n->getPrefix()[i] || end_key < n->getPrefix()[i]) { // no contained
+                    return false;
+                } else if (start_key < n->getPrefix()[i]) { // lower is open
+                    k1 = 0;
+                } else if (end_key > n->getPrefix()[i]) { // higher is open
+                    k2 = 255;
+                }
+                level++;
+            }
+            if (k1 == -1) k1 = start[level];
+            if (k2 == -1) k2 = end[level];
+            return true;
+        }
+
+        bool checkPrefix(const N *n, const Key &k, uint16_t &level,
                          uint8_t &no_match_key, uint8_t *remain, uint8_t &remain_len) const {
             for (int i = 0; i < n->getPrefixLen(); i++) {
                 if (k[level] != n->getPrefix()[i]) {

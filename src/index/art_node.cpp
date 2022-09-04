@@ -124,4 +124,26 @@ namespace Index {
         }
         return false;
     }
+
+    void N::getChildren(const N* cur, const uint8_t start, const uint8_t end,
+                            std::tuple<uint8_t, N*>* const &children, uint16_t& len) {
+        switch (cur->getType()) {
+            case NT4: {
+                auto n = static_cast<const N4 *>(cur);
+                return n->getChildren(start, end, children, len);
+            }
+            case NT16: {
+                auto n = static_cast<const N16 *>(cur);
+                return n->getChildren(start, end, children, len);
+            }
+            case NT48: {
+                auto n = static_cast<const N48 *>(cur);
+                return n->getChildren(start, end, children, len);
+            }
+            case NT256: {
+                auto n = static_cast<const N256 *>(cur);
+                return n->getChildren(start, end, children, len);
+            }
+        }
+    }
 }
