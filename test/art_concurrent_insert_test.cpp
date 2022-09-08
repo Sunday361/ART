@@ -30,15 +30,6 @@ protected:
     std::default_random_engine gen;
 
     template<uint16_t KeyLen>
-    KEY<KeyLen> GenKey() {
-        uint8_t *c = (uint8_t*)malloc(KeyLen);
-        for (int i = 0; i < KeyLen; i++) {
-            c[i] = gen() % 255;
-        }
-        return KEY<KeyLen>(c, KeyLen);
-    }
-
-    template<uint16_t KeyLen>
     void GenOrderedKey(vector<KEY<KeyLen>>& v, int count) {
         KEY<KeyLen> r;
         int idx = KeyLen - 1;
@@ -71,19 +62,6 @@ protected:
         }
     }
 
-    void GenRandomSeq(vector<uint64_t>& v, size_t hi) {
-        size_t i;
-        unordered_set<uint64_t> tmp;
-        for (i = 0; i <= hi; i++) {
-            int j = rand() % (hi + 1);
-            while (tmp.count(j)) {
-                j = (j + 1) % (hi + 1);
-            }
-            tmp.insert(j);
-        }
-        for (auto& t : tmp) v.push_back(t);
-    }
-
     void SetUp() override {
         art_tree_32 = new ART<KEY32>(&pool);
         art_tree_64 = new ART<KEY64>(&pool);
@@ -99,19 +77,19 @@ protected:
 TEST_F(ART_TEST, CURRENT_INSERT)
 {
     const int NUM = (1024*1024*16);
-    vector<KEY<KEY32>> key_list;
-    GenOrderedKey<KEY32>(key_list, NUM);
+    vector<KEY<KEY128>> key_list;
+    GenOrderedKey<KEY128>(key_list, NUM);
 
     std::function<void(size_t, size_t)> lookup = [&](size_t i, size_t j) {
         for (size_t k = i; k < j; k++) {
             TID tid;
-            art_tree_32->lookup(key_list[k], tid);
+            art_tree_128->lookup(key_list[k], tid);
         }
     };
 
     std::function<void(size_t, size_t)> insert = [&](size_t i, size_t j) {
         for (size_t k = i; k < j; k++) {
-            art_tree_32->insert(key_list[k], k);
+            art_tree_128->insert(key_list[k], k);
         }
     };
 
@@ -119,21 +97,21 @@ TEST_F(ART_TEST, CURRENT_INSERT)
     size_t ThreadNum;
     size_t CountPerThread;
 
-    ThreadNum = 1;
-    CountPerThread = NUM / ThreadNum;
-    auto now1 = std::chrono::steady_clock::now();
-    for (size_t i = 0; i < ThreadNum; i++) {
-        threads.emplace_back(new thread(insert, CountPerThread * i, CountPerThread * (i + 1)));
-    }
-    for (size_t i = 0; i < ThreadNum; i++) {
-        threads[i]->join();
-    }
-    auto end1 = std::chrono::steady_clock::now();
-
-    cout << std::setw(9) << std::chrono::duration<double>(end1 - now1).count() << endl;
+//    ThreadNum = 1;
+//    CountPerThread = NUM / ThreadNum;
+//    auto now1 = std::chrono::steady_clock::now();
+//    for (size_t i = 0; i < ThreadNum; i++) {
+//        threads.emplace_back(new thread(insert, CountPerThread * i, CountPerThread * (i + 1)));
+//    }
+//    for (size_t i = 0; i < ThreadNum; i++) {
+//        threads[i]->join();
+//    }
+//    auto end1 = std::chrono::steady_clock::now();
+//
+//    cout << std::setw(9) << std::chrono::duration<double>(end1 - now1).count() << endl;
     threads.clear();
-    delete art_tree_32;
-    art_tree_32 = new ART<KEY32>(&pool);
+    delete art_tree_128;
+    art_tree_128 = new ART<KEY128>(&pool);
 
     ThreadNum = 4;
     CountPerThread = NUM / ThreadNum;
@@ -148,8 +126,8 @@ TEST_F(ART_TEST, CURRENT_INSERT)
 
     cout << std::setw(9) << std::chrono::duration<double>(end2 - now2).count() << endl;
     threads.clear();
-    delete art_tree_32;
-    art_tree_32 = new ART<KEY32>(&pool);
+    delete art_tree_128;
+    art_tree_128 = new ART<KEY128>(&pool);
 
     ThreadNum = 8;
     CountPerThread = NUM / ThreadNum;
@@ -164,8 +142,8 @@ TEST_F(ART_TEST, CURRENT_INSERT)
 
     cout << std::setw(9) << std::chrono::duration<double>(end3 - now3).count() << endl;
     threads.clear();
-    delete art_tree_32;
-    art_tree_32 = new ART<KEY32>(&pool);
+    delete art_tree_128;
+    art_tree_128 = new ART<KEY128>(&pool);
 
     ThreadNum = 16;
     CountPerThread = NUM / ThreadNum;
@@ -180,8 +158,8 @@ TEST_F(ART_TEST, CURRENT_INSERT)
 
     cout << std::setw(9) << std::chrono::duration<double>(end4 - now4).count() << endl;
     threads.clear();
-    delete art_tree_32;
-    art_tree_32 = new ART<KEY32>(&pool);
+    delete art_tree_128;
+    art_tree_128 = new ART<KEY128>(&pool);
 
     ThreadNum = 32;
     CountPerThread = NUM / ThreadNum;
@@ -196,6 +174,6 @@ TEST_F(ART_TEST, CURRENT_INSERT)
 
     cout << std::setw(9) << std::chrono::duration<double>(end5 - now5).count() << endl;
     threads.clear();
-    delete art_tree_32;
-    art_tree_32 = new ART<KEY32>(&pool);
+    delete art_tree_128;
+    art_tree_128 = new ART<KEY128>(&pool);
 }

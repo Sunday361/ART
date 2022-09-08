@@ -6,10 +6,9 @@
 #include <random>
 #include <unordered_set>
 #include <thread>
-#include <map>
 
 #include <index/art_key.h>
-#include <index/art_tree.h>
+#include <index/art_tree_lock.h>
 #include <index/art_obj_pool.h>
 
 const uint16_t KEY32 = 32;
@@ -21,10 +20,10 @@ using namespace Index;
 
 class ART_TEST : public ::testing::Test {
 protected:
-    ART<KEY32> *art_tree_32;
-    ART<KEY64> *art_tree_64;
-    ART<KEY128> *art_tree_128;
-    ART<KEY256> *art_tree_256;
+    ART_Lock<KEY32> *art_tree_32;
+    ART_Lock<KEY64> *art_tree_64;
+    ART_Lock<KEY128> *art_tree_128;
+    ART_Lock<KEY256> *art_tree_256;
 
     Index::ArtObjPool pool;
 
@@ -86,10 +85,10 @@ protected:
     }
 
     void SetUp() override {
-        art_tree_32 = new ART<KEY32>(&pool);
-        art_tree_64 = new ART<KEY64>(&pool);
-        art_tree_128 = new ART<KEY128>(&pool);
-        art_tree_256 = new ART<KEY256>(&pool);
+        art_tree_32 = new ART_Lock<KEY32>(&pool);
+        art_tree_64 = new ART_Lock<KEY64>(&pool);
+        art_tree_128 = new ART_Lock<KEY128>(&pool);
+        art_tree_256 = new ART_Lock<KEY256>(&pool);
     }
 
     void TearDown() override {
@@ -147,10 +146,9 @@ TEST_F(ART_TEST, RANDOM_INSERT_TEST)
 {
     const size_t NUM = 256*256*16;
     vector<KEY<KEY32>> key_list;
+
     GenRandomKey<KEY32>(key_list, NUM);
-
-    std::map<uint64_t, vector<uint64_t>> maps;
-
+    long min_dis = INT32_MAX, max_dis = INT32_MIN;
     auto now1 = std::chrono::steady_clock::now();
     for (size_t i = 0; i < NUM; i++) {
         auto now = std::chrono::steady_clock::now();
@@ -158,40 +156,14 @@ TEST_F(ART_TEST, RANDOM_INSERT_TEST)
         auto end = std::chrono::steady_clock::now();
         auto dis = std::chrono::duration_cast<chrono::nanoseconds>(end - now).count();
 
-        maps[dis / 20].push_back(dis);
+        min_dis = min(dis, min_dis);
+        max_dis = max(dis, max_dis);
     }
     auto end1 = std::chrono::steady_clock::now();
     auto dis1 = std::chrono::duration_cast<chrono::nanoseconds>(end1 - now1).count();
 
-    uint64_t p95 = 0, p99 = 0;
-    uint64_t count95 = 0, count99 = 0;
-    uint64_t bar95 = NUM * 0.95;
-    uint64_t bar99 = NUM * 0.99;
-    for (auto& [k, v] : maps) {
-        if (count95 + v.size() > bar95) {
-            p95 = k;
-            break;
-        } else {
-            count95 += v.size();
-        }
-    }
-
-    p95 = maps[p95][bar95 - count95];
-
-    for (auto& [k, v] : maps) {
-        if (count99 + v.size() > bar99) {
-            p99 = k;
-            break;
-        } else {
-            count99 += v.size();
-        }
-    }
-
-    p99 = maps[p99][bar99 - count99];
-
-    std::cout << "Avg: " << dis1 / NUM << endl;
-    std::cout << "P95: " << p95 << endl;
-    std::cout << "P99: " << p99 << endl;
+    std::cout << "MAX: " << max_dis << endl;
+    std::cout << "MIN: " << min_dis << endl;
     std::cout << "Total: " << dis1 << endl;
 }
 
