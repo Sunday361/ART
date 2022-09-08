@@ -100,9 +100,7 @@ TEST_F(ART_TEST, CURRENT_INSERT)
 {
     const int NUM = (1024*1024*16);
     vector<KEY<KEY32>> key_list;
-    GenRandomKey<KEY32>(key_list, NUM);
-
-    sleep(1);
+    GenOrderedKey<KEY32>(key_list, NUM);
 
     std::function<void(size_t, size_t)> lookup = [&](size_t i, size_t j) {
         for (size_t k = i; k < j; k++) {
@@ -133,5 +131,7 @@ TEST_F(ART_TEST, CURRENT_INSERT)
     auto end2 = std::chrono::steady_clock::now();
 
     cout << std::setw(9) << std::chrono::duration<double>(end2 - now2).count() << endl;
+
+    sleep(10);
     threads.clear();
 }

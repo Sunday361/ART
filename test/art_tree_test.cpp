@@ -153,12 +153,12 @@ TEST_F(ART_TEST, RANDOM_INSERT_TEST)
 
     auto now1 = std::chrono::steady_clock::now();
     for (size_t i = 0; i < NUM; i++) {
-        auto now = std::chrono::steady_clock::now();
+        //auto now = std::chrono::steady_clock::now();
         art_tree_32->insert(key_list[i], i);
-        auto end = std::chrono::steady_clock::now();
-        auto dis = std::chrono::duration_cast<chrono::nanoseconds>(end - now).count();
+        //auto end = std::chrono::steady_clock::now();
+        //auto dis = std::chrono::duration_cast<chrono::nanoseconds>(end - now).count();
 
-        maps[dis / 20].push_back(dis);
+        //maps[dis / 20].push_back(dis);
     }
     auto end1 = std::chrono::steady_clock::now();
     auto dis1 = std::chrono::duration_cast<chrono::nanoseconds>(end1 - now1).count();
@@ -176,7 +176,8 @@ TEST_F(ART_TEST, RANDOM_INSERT_TEST)
         }
     }
 
-    p95 = maps[p95][bar95 - count95];
+    if (maps.count(p95))
+        p95 = maps[p95][bar95 - count95];
 
     for (auto& [k, v] : maps) {
         if (count99 + v.size() > bar99) {
@@ -187,7 +188,8 @@ TEST_F(ART_TEST, RANDOM_INSERT_TEST)
         }
     }
 
-    p99 = maps[p99][bar99 - count99];
+    if (maps.count(p99))
+        p99 = maps[p99][bar99 - count99];
 
     std::cout << "Avg: " << dis1 / NUM << endl;
     std::cout << "P95: " << p95 << endl;
@@ -245,23 +247,40 @@ TEST_F(ART_TEST, CONCURRENT_INSERT1_AND_LOOKUP4_TEST)
 
     GenRandomKey<KEY32>(key_list, NUM + CountPerThread);
 
-    std::function<void(size_t, size_t)> insert = [&](size_t i, size_t j) {
+    std::map<uint64_t, vector<uint64_t>> maps[ThreadNum + 1];
+
+    std::function<void(size_t, size_t)> insertWithout = [&](size_t i, size_t j) {
         for (size_t k = i; k < j; k++) {
             art_tree_32->insert(key_list[k], k);
         }
     };
 
+    std::function<void(size_t, size_t)> insert = [&](size_t i, size_t j) {
+        for (size_t k = i; k < j; k++) {
+            auto now = std::chrono::steady_clock::now();
+            art_tree_32->insert(key_list[k], k);
+            auto end = std::chrono::steady_clock::now();
+            auto dis = std::chrono::duration_cast<chrono::nanoseconds>(end - now).count();
+
+            maps[ThreadNum][dis / 20].push_back(dis);
+        }
+    };
+
     std::function<void(size_t, size_t)> lookup = [&](size_t i, size_t j) {
+        int thid = i / CountPerThread;
         for (size_t k = i; k < j; k++) {
             TID tid;
+            auto now = std::chrono::steady_clock::now();
             art_tree_32->lookup(key_list[k], tid);
-            //EXPECT_EQ(find, true);
-            //EXPECT_EQ(tid, k);
+            auto end = std::chrono::steady_clock::now();
+            auto dis = std::chrono::duration_cast<chrono::nanoseconds>(end - now).count();
+
+            maps[thid][dis / 20].push_back(dis);
         }
     };
 
     for (size_t i = 0; i < ThreadNum; i++) {
-        threads.emplace_back(new thread(insert, i * CountPerThread, (i + 1) * CountPerThread));
+        threads.emplace_back(new thread(insertWithout, i * CountPerThread, (i + 1) * CountPerThread));
     }
 
     for (size_t i = 0; i < ThreadNum; i++) {
@@ -270,7 +289,7 @@ TEST_F(ART_TEST, CONCURRENT_INSERT1_AND_LOOKUP4_TEST)
 
     threads.clear();
 
-    auto now = std::chrono::steady_clock::now();
+    auto now1 = std::chrono::steady_clock::now();
     for (size_t i = 0; i < ThreadNum; i++) {
         threads.emplace_back(new thread(lookup, i * CountPerThread, (i + 1) * CountPerThread));
     }
@@ -279,9 +298,48 @@ TEST_F(ART_TEST, CONCURRENT_INSERT1_AND_LOOKUP4_TEST)
     for (size_t i = 0; i < threads.size(); i++) {
         threads[i]->join();
     }
-    auto end = std::chrono::steady_clock::now();
+    auto end1 = std::chrono::steady_clock::now();
 
-    cout << std::setw(9) << std::chrono::duration<double>(end - now).count() << endl;
+    auto dis1 = std::chrono::duration_cast<chrono::nanoseconds>(end1 - now1).count();
+
+    uint64_t p95 = 0, p99 = 0;
+    uint64_t count95 = 0, count99 = 0;
+    uint64_t bar95 = CountPerThread * 0.95 * (ThreadNum + 1);
+    uint64_t bar99 = CountPerThread * 0.99 * (ThreadNum + 1);
+
+    std::map<uint64_t, vector<uint64_t>> total;
+    for (size_t i = 0; i <= ThreadNum; i++) {
+        for (auto& [k, v] : maps[i]) {
+            total[k].insert(total[k].end(), v.begin(), v.end());
+        }
+    }
+
+    for (auto& [k, v] : total) {
+        if (count95 + v.size() > bar95) {
+            p95 = k;
+            break;
+        } else {
+            count95 += v.size();
+        }
+    }
+
+    p95 = total[p95][bar95 - count95];
+
+    for (auto& [k, v] : total) {
+        if (count99 + v.size() > bar99) {
+            p99 = k;
+            break;
+        } else {
+            count99 += v.size();
+        }
+    }
+
+    p99 = total[p99][bar99 - count99];
+
+    std::cout << "Avg: " << dis1 / NUM << endl;
+    std::cout << "P95: " << p95 << endl;
+    std::cout << "P99: " << p99 << endl;
+    std::cout << "Total: " << dis1 << endl;
 }
 
 TEST_F(ART_TEST, CONCURRENT_INSERT1_AND_LOOKUP8_TEST)
