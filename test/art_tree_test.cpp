@@ -347,7 +347,7 @@ TEST_F(ART_TEST, CONCURRENT_INSERT1_AND_LOOKUP8_TEST)
     const size_t NUM = 256*256*128;
     const size_t ThreadNum = 8;
     const size_t CountPerThread = NUM / ThreadNum;
-    const size_t TotalThreadNum = ThreadNum * (1.0 + 0.25);
+    const size_t TotalThreadNum = ThreadNum + ThreadNum / 4;
     vector<KEY<KEY32>> key_list;
     vector<std::thread*> threads;
 
@@ -362,7 +362,7 @@ TEST_F(ART_TEST, CONCURRENT_INSERT1_AND_LOOKUP8_TEST)
     };
 
     std::function<void(size_t, size_t)> insert = [&](size_t i, size_t j) {
-        int thid = i / CountPerThread + ThreadNum;
+        int thid = i / CountPerThread;
         for (size_t k = i; k < j; k++) {
             auto now = std::chrono::steady_clock::now();
             art_tree_32->insert(key_list[k], k);
@@ -471,7 +471,7 @@ TEST_F(ART_TEST, CONCURRENT_INSERT1_AND_LOOKUP16_TEST)
     };
 
     std::function<void(size_t, size_t)> insert = [&](size_t i, size_t j) {
-        int thid = i / CountPerThread + ThreadNum;
+        int thid = i / CountPerThread;
         for (size_t k = i; k < j; k++) {
             auto now = std::chrono::steady_clock::now();
             art_tree_32->insert(key_list[k], k);
@@ -580,7 +580,7 @@ TEST_F(ART_TEST, CONCURRENT_INSERT1_AND_LOOKUP32_TEST)
     };
 
     std::function<void(size_t, size_t)> insert = [&](size_t i, size_t j) {
-        int thid = i / CountPerThread + ThreadNum;
+        int thid = i / CountPerThread;
         for (size_t k = i; k < j; k++) {
             auto now = std::chrono::steady_clock::now();
             art_tree_32->insert(key_list[k], k);
