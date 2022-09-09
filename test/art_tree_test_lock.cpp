@@ -346,12 +346,13 @@ TEST_F(ART_TEST, CONCURRENT_INSERT1_AND_LOOKUP8_TEST)
     const size_t NUM = 256*256*128;
     const size_t ThreadNum = 8;
     const size_t CountPerThread = NUM / ThreadNum;
+    const size_t TotalThreadNum = ThreadNum * (1.0 + 0.25);
     vector<KEY<KEY32>> key_list;
     vector<std::thread*> threads;
 
-    GenRandomKey<KEY32>(key_list, NUM + CountPerThread);
+    GenRandomKey<KEY32>(key_list, TotalThreadNum * CountPerThread);
 
-    std::map<uint64_t, vector<uint64_t>> maps[ThreadNum + 1];
+    std::map<uint64_t, vector<uint64_t>> maps[TotalThreadNum];
 
     std::function<void(size_t, size_t)> insertWithout = [&](size_t i, size_t j) {
         for (size_t k = i; k < j; k++) {
@@ -360,13 +361,14 @@ TEST_F(ART_TEST, CONCURRENT_INSERT1_AND_LOOKUP8_TEST)
     };
 
     std::function<void(size_t, size_t)> insert = [&](size_t i, size_t j) {
+        int thid = i / CountPerThread + ThreadNum;
         for (size_t k = i; k < j; k++) {
             auto now = std::chrono::steady_clock::now();
             art_tree_32->insert(key_list[k], k);
             auto end = std::chrono::steady_clock::now();
             auto dis = std::chrono::duration_cast<chrono::nanoseconds>(end - now).count();
 
-            maps[ThreadNum][dis / 20].push_back(dis);
+            maps[thid][dis / 20].push_back(dis);
         }
     };
 
@@ -397,7 +399,9 @@ TEST_F(ART_TEST, CONCURRENT_INSERT1_AND_LOOKUP8_TEST)
     for (size_t i = 0; i < ThreadNum; i++) {
         threads.emplace_back(new thread(lookup, i * CountPerThread, (i + 1) * CountPerThread));
     }
-    threads.emplace_back(new thread(insert, ThreadNum * CountPerThread, (ThreadNum + 1) * CountPerThread));
+    for (size_t i = 0; i < ThreadNum / 4; i++) {
+        threads.emplace_back(new thread(insert, (ThreadNum + i) * CountPerThread, (ThreadNum + 1 + i) * CountPerThread));
+    }
 
     for (size_t i = 0; i < threads.size(); i++) {
         threads[i]->join();
@@ -408,11 +412,11 @@ TEST_F(ART_TEST, CONCURRENT_INSERT1_AND_LOOKUP8_TEST)
 
     uint64_t p95 = 0, p99 = 0;
     uint64_t count95 = 0, count99 = 0;
-    uint64_t bar95 = CountPerThread * 0.95 * (ThreadNum + 1);
-    uint64_t bar99 = CountPerThread * 0.99 * (ThreadNum + 1);
+    uint64_t bar95 = CountPerThread * 0.95 * TotalThreadNum;
+    uint64_t bar99 = CountPerThread * 0.99 * TotalThreadNum;
 
     std::map<uint64_t, vector<uint64_t>> total;
-    for (size_t i = 0; i <= ThreadNum; i++) {
+    for (size_t i = 0; i < TotalThreadNum; i++) {
         for (auto& [k, v] : maps[i]) {
             total[k].insert(total[k].end(), v.begin(), v.end());
         }
@@ -451,12 +455,13 @@ TEST_F(ART_TEST, CONCURRENT_INSERT1_AND_LOOKUP16_TEST)
     const size_t NUM = 256*256*256;
     const size_t ThreadNum = 16;
     const size_t CountPerThread = NUM / ThreadNum;
+    const size_t TotalThreadNum = ThreadNum * (1.0 + 0.25);
     vector<KEY<KEY32>> key_list;
     vector<std::thread*> threads;
 
-    GenRandomKey<KEY32>(key_list, NUM + CountPerThread);
+    GenRandomKey<KEY32>(key_list, TotalThreadNum * CountPerThread);
 
-    std::map<uint64_t, vector<uint64_t>> maps[ThreadNum + 1];
+    std::map<uint64_t, vector<uint64_t>> maps[TotalThreadNum];
 
     std::function<void(size_t, size_t)> insertWithout = [&](size_t i, size_t j) {
         for (size_t k = i; k < j; k++) {
@@ -465,13 +470,14 @@ TEST_F(ART_TEST, CONCURRENT_INSERT1_AND_LOOKUP16_TEST)
     };
 
     std::function<void(size_t, size_t)> insert = [&](size_t i, size_t j) {
+        int thid = i / CountPerThread + ThreadNum;
         for (size_t k = i; k < j; k++) {
             auto now = std::chrono::steady_clock::now();
             art_tree_32->insert(key_list[k], k);
             auto end = std::chrono::steady_clock::now();
             auto dis = std::chrono::duration_cast<chrono::nanoseconds>(end - now).count();
 
-            maps[ThreadNum][dis / 20].push_back(dis);
+            maps[thid][dis / 20].push_back(dis);
         }
     };
 
@@ -502,7 +508,9 @@ TEST_F(ART_TEST, CONCURRENT_INSERT1_AND_LOOKUP16_TEST)
     for (size_t i = 0; i < ThreadNum; i++) {
         threads.emplace_back(new thread(lookup, i * CountPerThread, (i + 1) * CountPerThread));
     }
-    threads.emplace_back(new thread(insert, ThreadNum * CountPerThread, (ThreadNum + 1) * CountPerThread));
+    for (size_t i = 0; i < ThreadNum / 4; i++) {
+        threads.emplace_back(new thread(insert, (ThreadNum + i) * CountPerThread, (ThreadNum + 1 + i) * CountPerThread));
+    }
 
     for (size_t i = 0; i < threads.size(); i++) {
         threads[i]->join();
@@ -513,11 +521,11 @@ TEST_F(ART_TEST, CONCURRENT_INSERT1_AND_LOOKUP16_TEST)
 
     uint64_t p95 = 0, p99 = 0;
     uint64_t count95 = 0, count99 = 0;
-    uint64_t bar95 = CountPerThread * 0.95 * (ThreadNum + 1);
-    uint64_t bar99 = CountPerThread * 0.99 * (ThreadNum + 1);
+    uint64_t bar95 = CountPerThread * 0.95 * TotalThreadNum;
+    uint64_t bar99 = CountPerThread * 0.99 * TotalThreadNum;
 
     std::map<uint64_t, vector<uint64_t>> total;
-    for (size_t i = 0; i <= ThreadNum; i++) {
+    for (size_t i = 0; i < TotalThreadNum; i++) {
         for (auto& [k, v] : maps[i]) {
             total[k].insert(total[k].end(), v.begin(), v.end());
         }
@@ -553,15 +561,16 @@ TEST_F(ART_TEST, CONCURRENT_INSERT1_AND_LOOKUP16_TEST)
 
 TEST_F(ART_TEST, CONCURRENT_INSERT1_AND_LOOKUP32_TEST)
 {
-    const size_t NUM = 256*256*1024;
+    const size_t NUM = 256*256*512;
     const size_t ThreadNum = 32;
     const size_t CountPerThread = NUM / ThreadNum;
+    const size_t TotalThreadNum = ThreadNum * (1.0 + 0.25);
     vector<KEY<KEY32>> key_list;
     vector<std::thread*> threads;
 
-    GenRandomKey<KEY32>(key_list, NUM + CountPerThread);
+    GenRandomKey<KEY32>(key_list, TotalThreadNum * CountPerThread);
 
-    std::map<uint64_t, vector<uint64_t>> maps[ThreadNum + 1];
+    std::map<uint64_t, vector<uint64_t>> maps[TotalThreadNum];
 
     std::function<void(size_t, size_t)> insertWithout = [&](size_t i, size_t j) {
         for (size_t k = i; k < j; k++) {
@@ -570,13 +579,14 @@ TEST_F(ART_TEST, CONCURRENT_INSERT1_AND_LOOKUP32_TEST)
     };
 
     std::function<void(size_t, size_t)> insert = [&](size_t i, size_t j) {
+        int thid = i / CountPerThread + ThreadNum;
         for (size_t k = i; k < j; k++) {
             auto now = std::chrono::steady_clock::now();
             art_tree_32->insert(key_list[k], k);
             auto end = std::chrono::steady_clock::now();
             auto dis = std::chrono::duration_cast<chrono::nanoseconds>(end - now).count();
 
-            maps[ThreadNum][dis / 20].push_back(dis);
+            maps[thid][dis / 20].push_back(dis);
         }
     };
 
@@ -607,7 +617,9 @@ TEST_F(ART_TEST, CONCURRENT_INSERT1_AND_LOOKUP32_TEST)
     for (size_t i = 0; i < ThreadNum; i++) {
         threads.emplace_back(new thread(lookup, i * CountPerThread, (i + 1) * CountPerThread));
     }
-    threads.emplace_back(new thread(insert, ThreadNum * CountPerThread, (ThreadNum + 1) * CountPerThread));
+    for (size_t i = 0; i < ThreadNum / 4; i++) {
+        threads.emplace_back(new thread(insert, (ThreadNum + i) * CountPerThread, (ThreadNum + 1 + i) * CountPerThread));
+    }
 
     for (size_t i = 0; i < threads.size(); i++) {
         threads[i]->join();
@@ -618,11 +630,11 @@ TEST_F(ART_TEST, CONCURRENT_INSERT1_AND_LOOKUP32_TEST)
 
     uint64_t p95 = 0, p99 = 0;
     uint64_t count95 = 0, count99 = 0;
-    uint64_t bar95 = CountPerThread * 0.95 * (ThreadNum + 1);
-    uint64_t bar99 = CountPerThread * 0.99 * (ThreadNum + 1);
+    uint64_t bar95 = CountPerThread * 0.95 * TotalThreadNum;
+    uint64_t bar99 = CountPerThread * 0.99 * TotalThreadNum;
 
     std::map<uint64_t, vector<uint64_t>> total;
-    for (size_t i = 0; i <= ThreadNum; i++) {
+    for (size_t i = 0; i < TotalThreadNum; i++) {
         for (auto& [k, v] : maps[i]) {
             total[k].insert(total[k].end(), v.begin(), v.end());
         }
